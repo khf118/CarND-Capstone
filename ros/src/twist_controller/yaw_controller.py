@@ -1,4 +1,4 @@
-from math import atan
+from math import atan, asin
 
 class YawController(object):
     def __init__(self, wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle):
