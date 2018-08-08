@@ -6,7 +6,10 @@ class TLClassifier(object):
     def __init__(self):
 
         self.SSD_GRAPH_FILE = './SSD_Mobilenet/Sim/frozen_inference_graph.pb'
+        self.confidence_cutoff = 0.6
+        
         #self.SSD_GRAPH_FILE = './SSD_Inception_v2/Sim/frozen_inference_graph.pb'
+        #self.confidence_cutoff = 0.7
         
         #load classifier
         self.detection_graph = load_graph(SSD_GRAPH_FILE)
@@ -93,9 +96,8 @@ class TLClassifier(object):
             scores = np.squeeze(scores)
             classes = np.squeeze(classes)
 
-            confidence_cutoff = 0.8
             # Filter boxes with a confidence score less than `confidence_cutoff`
-            boxes, scores, classes = filter_boxes(confidence_cutoff, boxes, scores, classes)
+            boxes, scores, classes = filter_boxes(self.confidence_cutoff, boxes, scores, classes)
 
             # The current box coordinates are normalized to a range between 0 and 1.
             # This converts the coordinates actual location on the image.
