@@ -10,6 +10,7 @@ from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
+import math
 
 STATE_COUNT_THRESHOLD = 3
 
@@ -55,7 +56,7 @@ class TLDetector(object):
         self.pose = msg
 
     def waypoints_cb(self, waypoints):
-        self.waypoints = waypoints
+        self.waypoints = waypoints.waypoints
 
     def traffic_cb(self, msg):
         self.lights = msg.lights
@@ -104,11 +105,11 @@ class TLDetector(object):
         closest_dist = float('inf')
 
         for wp_idx in range(len(self.waypoints)):
-            distance = math.sqrt((pose.position.x-self.waypoints[wp_idx].x)**2 +
-                                 (pose.position.y-self.waypoints[wp_idx].y)**2)
+            distance = math.sqrt((pose.position.x-self.waypoints[wp_idx].pose.pose.position.x)**2 +
+                                 (pose.position.y-self.waypoints[wp_idx].pose.pose.position.y)**2)
 
-            if(distance < closest):
-                closest_dist = dist
+            if(distance < closest_dist):
+                closest_dist = distance
                 closest_idx = wp_idx
         
         return closest_idx
@@ -158,19 +159,22 @@ class TLDetector(object):
             for stop_pos in stop_line_positions:
                 new_light = TrafficLight()
 
-                new_light.header = Header()
+                #new_light.header = Header()
                 new_light.header.stamp = rospy.Time.now()
                 new_light.header.frame_id = 'world'
 
-                new_light.pose = self.create_pose(stop_pos[0], stop_pos[1], 0, 0)
+                new_light.pose.pose = Pose()
+                new_light.pose.pose.position.x = stop_pos[0]
+                new_light.pose.pose.position.y = stop_pos[1]
+                
                 new_light.state = TrafficLight.UNKNOWN
 
-                stop_position = self.get_closest_waypoint(new_light.pose.pose, self.waypoints.waypoints)
+                stop_position = self.get_closest_waypoint(new_light.pose.pose)
                 
-                distance_to_light = math.sqrt((self.waypoints.waypoints[car_position].pose.pose.position.x-self.waypoints.waypoints[stop_position].pose.pose.position.x)**2 +
-                                              (self.waypoints.waypoints[car_position].pose.pose.position.y-self.waypoints.waypoints[stop_position].pose.pose.position.y)**2)
+                distance_to_light = math.sqrt((self.waypoints[car_position].pose.pose.position.x-self.waypoints[stop_position].pose.pose.position.x)**2 +
+                                              (self.waypoints[car_position].pose.pose.position.y-self.waypoints[stop_position].pose.pose.position.y)**2)
                 
-                if distance_to_light < min_dist and dist < max_detection_dist: # if closer than last light, but not beyond max range we are interested in, 
+                if distance_to_light < min_dist and distance_to_light < max_detection_dist: # if closer than last light, but not beyond max range we are interested in, 
                     if car_position < stop_position: # and our car has not yet passed the wp the light is at, then...
                         min_dist = distance_to_light
                         light = new_light
@@ -178,6 +182,7 @@ class TLDetector(object):
 
         if light:
             state = self.get_light_state(light)
+            print(state)
             return light_wp, state
         self.waypoints = None
         return -1, TrafficLight.UNKNOWN

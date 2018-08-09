@@ -1,18 +1,19 @@
 from styx_msgs.msg import TrafficLight
 import tensorflow as tf
 import numpy as np
+import cv2
 
 class TLClassifier(object):
     def __init__(self):
 
-        self.SSD_GRAPH_FILE = './SSD_Mobilenet/Sim/frozen_inference_graph.pb'
+        self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
         self.confidence_cutoff = 0.6
         
-        #self.SSD_GRAPH_FILE = './SSD_Inception_v2/Sim/frozen_inference_graph.pb'
+        #self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Inception_v2/Sim/frozen_inference_graph.pb'
         #self.confidence_cutoff = 0.7
         
         #load classifier
-        self.detection_graph = load_graph(SSD_GRAPH_FILE)
+        self.detection_graph = self.load_graph(self.SSD_GRAPH_FILE)
 
         # The input placeholder for the image.
         # `get_tensor_by_name` returns the Tensor with the associated name in the Graph.
@@ -28,7 +29,7 @@ class TLClassifier(object):
         # The classification of the object (integer id).
         self.detection_classes = self.detection_graph.get_tensor_by_name('detection_classes:0')
 
-    def load_graph(graph_file):
+    def load_graph(self,graph_file):
         """Loads a frozen inference graph"""
         graph = tf.Graph()
         with graph.as_default():
@@ -39,7 +40,7 @@ class TLClassifier(object):
                 tf.import_graph_def(od_graph_def, name='')
         return graph
 
-    def filter_boxes(min_score, boxes, scores, classes):
+    def filter_boxes(self,min_score, boxes, scores, classes):
         """Return boxes with a confidence >= `min_score`"""
         n = len(classes)
         idxs = []
@@ -52,7 +53,7 @@ class TLClassifier(object):
         filtered_classes = classes[idxs, ...]
         return filtered_boxes, filtered_scores, filtered_classes
 
-    def to_image_coords(boxes, height, width):
+    def to_image_coords(self,boxes, height, width):
         """
         The original box coordinate output is normalized, i.e [0, 1].
         
@@ -86,10 +87,10 @@ class TLClassifier(object):
 
         image_np = np.expand_dims(np.asarray(image, dtype=np.uint8), 0)
 
-        with tf.Session(graph=detection_graph) as sess:                
+        with tf.Session(graph=self.detection_graph) as sess:                
             # Actual detection.
-            (boxes, scores, classes) = sess.run([detection_boxes, detection_scores, detection_classes], 
-                                                feed_dict={image_tensor: image_np})
+            (boxes, scores, classes) = sess.run([self.detection_boxes, self.detection_scores, self.detection_classes], 
+                                                feed_dict={self.image_tensor: image_np})
 
             # Remove unnecessary dimensions
             boxes = np.squeeze(boxes)
@@ -97,11 +98,11 @@ class TLClassifier(object):
             classes = np.squeeze(classes)
 
             # Filter boxes with a confidence score less than `confidence_cutoff`
-            boxes, scores, classes = filter_boxes(self.confidence_cutoff, boxes, scores, classes)
+            boxes, scores, classes = self.filter_boxes(self.confidence_cutoff, boxes, scores, classes)
 
             # The current box coordinates are normalized to a range between 0 and 1.
             # This converts the coordinates actual location on the image.
-            width, height = image.size
+            #width, height = image.size
             #box_coords = to_image_coords(boxes, height, width)
 
             if boxes.size == 0:
