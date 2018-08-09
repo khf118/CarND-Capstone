@@ -100,8 +100,18 @@ class TLDetector(object):
             int: index of the closest waypoint in self.waypoints
 
         """
-        #TODO implement
-        return 0
+        closest_idx = 0
+        closest_dist = float('inf')
+
+        for wp_idx in range(len(self.waypoints)):
+            distance = math.sqrt((pose.position.x-self.waypoints[wp_idx].x)**2 +
+                                 (pose.position.y-self.waypoints[wp_idx].y)**2)
+
+            if(distance < closest):
+                closest_dist = dist
+                closest_idx = wp_idx
+        
+        return closest_idx
 
     def get_light_state(self, light):
         """Determines the current color of the traffic light
@@ -119,6 +129,9 @@ class TLDetector(object):
 
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
+        # note, do we want to have this line? check if network trained on RGB or BGR - i think BGR
+        cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
+
         #Get classification
         return self.light_classifier.get_classification(cv_image)
 
@@ -133,12 +146,35 @@ class TLDetector(object):
         """
         light = None
 
+        max_detection_dist = 120 # maximum distance we want to check lights for
+        min_dist = float('inf') #closest light
+
         # List of positions that correspond to the line to stop in front of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
         if(self.pose):
             car_position = self.get_closest_waypoint(self.pose.pose)
 
-        #TODO find the closest visible traffic light (if one exists)
+            # Find the closest visible traffic light (if one exists)
+            for stop_pos in stop_line_positions:
+                new_light = TrafficLight()
+
+                new_light.header = Header()
+                new_light.header.stamp = rospy.Time.now()
+                new_light.header.frame_id = 'world'
+
+                new_light.pose = self.create_pose(stop_pos[0], stop_pos[1], 0, 0)
+                new_light.state = TrafficLight.UNKNOWN
+
+                stop_position = self.get_closest_waypoint(new_light.pose.pose, self.waypoints.waypoints)
+                
+                distance_to_light = math.sqrt((self.waypoints.waypoints[car_position].pose.pose.position.x-self.waypoints.waypoints[stop_position].pose.pose.position.x)**2 +
+                                              (self.waypoints.waypoints[car_position].pose.pose.position.y-self.waypoints.waypoints[stop_position].pose.pose.position.y)**2)
+                
+                if distance_to_light < min_dist and dist < max_detection_dist: # if closer than last light, but not beyond max range we are interested in, 
+                    if car_position < stop_position: # and our car has not yet passed the wp the light is at, then...
+                        min_dist = distance_to_light
+                        light = new_light
+                        light_wp = stop_position
 
         if light:
             state = self.get_light_state(light)
