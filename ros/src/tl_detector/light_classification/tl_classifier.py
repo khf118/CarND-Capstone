@@ -7,8 +7,13 @@ class TLClassifier(object):
     def __init__(self):
 
         # self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
-        self.SSD_GRAPH_FILE = 'light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
-        self.confidence_cutoff = 0.6
+
+        self.SSD_GRAPH_FILE = 'light_classification/SSD_Inception_v2_TF14/Sim/frozen_inference_graph.pb'
+        self.confidence_cutoff = 0.5
+
+        # Nets below trained on TF 1.9 - Carla runs on 1.3 so we need to use a net trained on TF 1.4 - the nets trained on 1.9 seem to run better though :(
+        #self.SSD_GRAPH_FILE = 'light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
+        #self.confidence_cutoff = 0.6
 
         #self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Inception_v2/Sim/frozen_inference_graph.pb'
         #self.confidence_cutoff = 0.7
