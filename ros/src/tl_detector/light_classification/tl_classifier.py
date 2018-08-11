@@ -6,12 +6,13 @@ import cv2
 class TLClassifier(object):
     def __init__(self):
 
-        self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
+        # self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
+        self.SSD_GRAPH_FILE = 'light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
         self.confidence_cutoff = 0.6
-        
+
         #self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Inception_v2/Sim/frozen_inference_graph.pb'
         #self.confidence_cutoff = 0.7
-        
+
         #load classifier
         self.detection_graph = self.load_graph(self.SSD_GRAPH_FILE)
 
@@ -47,7 +48,7 @@ class TLClassifier(object):
         for i in range(n):
             if scores[i] >= min_score:
                 idxs.append(i)
-        
+
         filtered_boxes = boxes[idxs, ...]
         filtered_scores = scores[idxs, ...]
         filtered_classes = classes[idxs, ...]
@@ -56,7 +57,7 @@ class TLClassifier(object):
     def to_image_coords(self,boxes, height, width):
         """
         The original box coordinate output is normalized, i.e [0, 1].
-        
+
         This converts it back to the original coordinate based on the image
         size.
         """
@@ -65,9 +66,9 @@ class TLClassifier(object):
         box_coords[:, 1] = boxes[:, 1] * width
         box_coords[:, 2] = boxes[:, 2] * height
         box_coords[:, 3] = boxes[:, 3] * width
-        
+
         return box_coords
-    
+
     def get_classification(self, image):
         """Determines the color of the traffic light in the image
 
@@ -87,9 +88,9 @@ class TLClassifier(object):
 
         image_np = np.expand_dims(np.asarray(image, dtype=np.uint8), 0)
 
-        with tf.Session(graph=self.detection_graph) as sess:                
+        with tf.Session(graph=self.detection_graph) as sess:
             # Actual detection.
-            (boxes, scores, classes) = sess.run([self.detection_boxes, self.detection_scores, self.detection_classes], 
+            (boxes, scores, classes) = sess.run([self.detection_boxes, self.detection_scores, self.detection_classes],
                                                 feed_dict={self.image_tensor: image_np})
 
             # Remove unnecessary dimensions
@@ -107,10 +108,10 @@ class TLClassifier(object):
 
             if boxes.size == 0:
                 return TrafficLight.UNKNOWN
-            
+
             # todo: get best result based on either size of box, or highest probability
             # HERE NEED TO SORT CLASSES INTO BEST RESULT FIRST (BASED ON PROB OR BOX SIZE ETC.)
-            
+
             if(classes[0] == 2):
                 return TrafficLight.RED
 
@@ -119,5 +120,5 @@ class TLClassifier(object):
 
             if(classes[0] == 3):
                 return TrafficLight.YELLOW
-    
+
         return TrafficLight.UNKNOWN
