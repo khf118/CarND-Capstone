@@ -104,14 +104,15 @@ class TLDetector(object):
         closest_idx = 0
         closest_dist = float('inf')
 
-        for wp_idx in range(len(self.waypoints)):
-            distance = math.sqrt((pose.position.x-self.waypoints[wp_idx].pose.pose.position.x)**2 +
-                                 (pose.position.y-self.waypoints[wp_idx].pose.pose.position.y)**2)
+        if self.waypoints:
+            for wp_idx in range(len(self.waypoints)):
+                distance = math.sqrt((pose.position.x-self.waypoints[wp_idx].pose.pose.position.x)**2 +
+                                    (pose.position.y-self.waypoints[wp_idx].pose.pose.position.y)**2)
 
-            if(distance < closest_dist):
-                closest_dist = distance
-                closest_idx = wp_idx
-        
+                if(distance < closest_dist):
+                    closest_dist = distance
+                    closest_idx = wp_idx
+
         return closest_idx
 
     def get_light_state(self, light):
@@ -152,7 +153,7 @@ class TLDetector(object):
 
         # List of positions that correspond to the line to stop in front of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
-        if(self.pose):
+        if(self.pose and self.waypoints):
             car_position = self.get_closest_waypoint(self.pose.pose)
 
             # Find the closest visible traffic light (if one exists)
@@ -166,15 +167,15 @@ class TLDetector(object):
                 new_light.pose.pose = Pose()
                 new_light.pose.pose.position.x = stop_pos[0]
                 new_light.pose.pose.position.y = stop_pos[1]
-                
+
                 new_light.state = TrafficLight.UNKNOWN
 
                 stop_position = self.get_closest_waypoint(new_light.pose.pose)
-                
+
                 distance_to_light = math.sqrt((self.waypoints[car_position].pose.pose.position.x-self.waypoints[stop_position].pose.pose.position.x)**2 +
                                               (self.waypoints[car_position].pose.pose.position.y-self.waypoints[stop_position].pose.pose.position.y)**2)
-                
-                if distance_to_light < min_dist and distance_to_light < max_detection_dist: # if closer than last light, but not beyond max range we are interested in, 
+
+                if distance_to_light < min_dist and distance_to_light < max_detection_dist: # if closer than last light, but not beyond max range we are interested in,
                     if car_position < stop_position: # and our car has not yet passed the wp the light is at, then...
                         min_dist = distance_to_light
                         light = new_light
