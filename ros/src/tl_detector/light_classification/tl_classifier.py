@@ -4,10 +4,10 @@ import numpy as np
 import cv2
 
 class TLClassifier(object):
-    def __init__(self):
+    def __init__(self,path):
 
         # self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
-        self.SSD_GRAPH_FILE = 'light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
+        self.SSD_GRAPH_FILE = path
         self.confidence_cutoff = 0.6
 
         #self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Inception_v2/Sim/frozen_inference_graph.pb'
