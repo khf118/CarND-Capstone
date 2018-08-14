@@ -62,7 +62,7 @@ class WaypointUpdater(object):
         self.stopping = False
         self.stop_dict = {}
 
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(50)
         while not rospy.is_shutdown():
             self.count += 1
             final_waypoints_exist = self.set_final_waypoints()
@@ -118,7 +118,8 @@ class WaypointUpdater(object):
 
     def set_final_waypoints(self):
         final_waypoints_exist = False
-        if (self.waypoints is not None) and (self.position is not None) and (self.traffic_waypoint is not None):
+        #  if (self.waypoints is not None) and (self.position is not None) and (self.traffic_waypoint is not None):
+        if (self.waypoints is not None) and (self.position is not None):
 
             self.time = rospy.get_time()
             sample_time = self.time - self.time_old
@@ -128,60 +129,64 @@ class WaypointUpdater(object):
             # Get closest waypoint idx
             closest_waypoint = self.get_closest_waypoint()
 
-            # Get index of stopline
-            stopline_waypoint_idx = self.traffic_waypoint
-            stopline_waypoint_idx = int(str(stopline_waypoint_idx).split()[1])
-
-            # Get distance to next stopline
-            dist_next_stopline = self.distance(self.waypoints, closest_waypoint, stopline_waypoint_idx)
-            dist_next_stopline = max(0, dist_next_stopline - DIST_MARGIN)
-
-            # Initialize
-            req_a = 0
-            stop_time = 0
-            stop_distance = 0
-
-            # If ahead traffic light is red, then calcultate
-            # Request acceleration [m/s^2]
-            # Expected time to stop [sec]
-            # Expected distance to stop [m]
-            if dist_next_stopline != 0:
-                req_a = -(self.current_vel ** 2) / (2 * dist_next_stopline)
-                stop_time = - (self.current_vel / req_a)
-                stop_distance = -(0.5 * req_a) * (stop_time ** 2) + (self.current_vel * stop_time)
-
-            # Scheduling the target velocity from stop signal on position to stopline
-            if req_a < -0.7 and stop_distance != 0 and stop_distance > dist_next_stopline and self.stopping == False:
-                self.stopping = True
-
-                waypoint_margin = 1
-                self.stop_dict = {}
-
-                # Get waypoint index to stopline and assign velocity to each waypoint
-                for i in range(0, stopline_waypoint_idx - closest_waypoint):
-
-                    if stopline_waypoint_idx - closest_waypoint - waypoint_margin > 0:
-                        vel_input = max(self.current_vel - (self.current_vel * (i+1) / (stopline_waypoint_idx - closest_waypoint - waypoint_margin)), 0)
-                    else:
-                        vel_input = 0
-
-                    self.stop_dict[closest_waypoint + i] = vel_input
-            #
-            # # If vehicle req acceleration is less than max decel, than just go
-            # if req_a < DECEL_LIMIT:
-            #     self.stopping = False
-
-            if stopline_waypoint_idx == -1:
-                # If green light
-                Is_red_light = False
+            if self.traffic_waypoint is None:
                 self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
                 self.stopping = False
             else:
-                Is_red_light = True
-                self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
+                # Get index of stopline
+                stopline_waypoint_idx = self.traffic_waypoint
+                stopline_waypoint_idx = int(str(stopline_waypoint_idx).split()[1])
 
-                if self.stopping == True:
-                    self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.stop_dict[closest_waypoint])
+                # Get distance to next stopline
+                dist_next_stopline = self.distance(self.waypoints, closest_waypoint, stopline_waypoint_idx)
+                dist_next_stopline = max(0, dist_next_stopline - DIST_MARGIN)
+
+                # Initialize
+                req_a = 0
+                stop_time = 0
+                stop_distance = 0
+
+                # If ahead traffic light is red, then calcultate
+                # Request acceleration [m/s^2]
+                # Expected time to stop [sec]
+                # Expected distance to stop [m]
+                if dist_next_stopline != 0:
+                    req_a = -(self.current_vel ** 2) / (2 * dist_next_stopline)
+                    stop_time = - (self.current_vel / req_a)
+                    stop_distance = -(0.5 * req_a) * (stop_time ** 2) + (self.current_vel * stop_time)
+
+                # Scheduling the target velocity from stop signal on position to stopline
+                if req_a < -0.7 and stop_distance != 0 and stop_distance > dist_next_stopline and self.stopping == False:
+                    self.stopping = True
+
+                    waypoint_margin = 1
+                    self.stop_dict = {}
+
+                    # Get waypoint index to stopline and assign velocity to each waypoint
+                    for i in range(0, stopline_waypoint_idx - closest_waypoint):
+
+                        if stopline_waypoint_idx - closest_waypoint - waypoint_margin > 0:
+                            vel_input = max(self.current_vel - (self.current_vel * (i+1) / (stopline_waypoint_idx - closest_waypoint - waypoint_margin)), 0)
+                        else:
+                            vel_input = 0
+
+                        self.stop_dict[closest_waypoint + i] = vel_input
+                #
+                # # If vehicle req acceleration is less than max decel, than just go
+                # if req_a < DECEL_LIMIT:
+                #     self.stopping = False
+
+                if stopline_waypoint_idx == -1:
+                    # If green light
+                    Is_red_light = False
+                    self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
+                    self.stopping = False
+                else:
+                    Is_red_light = True
+                    self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
+
+                    if self.stopping == True:
+                        self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.stop_dict[closest_waypoint])
 
             # print('=======================================')
             # print('closest waypoint: ' + str(closest_waypoint))

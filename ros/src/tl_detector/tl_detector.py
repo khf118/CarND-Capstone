@@ -54,7 +54,7 @@ class TLDetector(object):
         while not rospy.is_shutdown():
             if self.camera_image is not None:
                 self.process_image()
-                rate.sleep()
+            rate.sleep()
 
     def pose_cb(self, msg):
         self.pose = msg
@@ -75,7 +75,7 @@ class TLDetector(object):
         """
         self.has_image = True
         self.camera_image = msg
-        
+
     def process_image(self):
         light_wp, state = self.process_traffic_lights()
         '''
@@ -158,7 +158,7 @@ class TLDetector(object):
 
         # List of positions that correspond to the line to stop in front of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
-        
+
         if(self.pose and self.waypoints):
             car_position = self.get_closest_waypoint(self.pose.pose)
 
@@ -190,7 +190,7 @@ class TLDetector(object):
         if light:
             state = self.get_light_state(light)
             return light_wp, state
-        
+
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
