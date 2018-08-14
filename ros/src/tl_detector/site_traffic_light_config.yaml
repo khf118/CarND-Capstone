@@ -6,3 +6,5 @@ camera_info:
 stop_line_positions:
     - [8.0, 16.2]
 is_site: True
+model_path: '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
+
