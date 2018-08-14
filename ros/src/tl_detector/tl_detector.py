@@ -12,7 +12,7 @@ import cv2
 import yaml
 import math
 
-STATE_COUNT_THRESHOLD = 3
+STATE_COUNT_THRESHOLD = 1
 
 class TLDetector(object):
     def __init__(self):
@@ -34,7 +34,7 @@ class TLDetector(object):
         rely on the position of the light and the camera image to predict it.
         '''
         #sub3 = rospy.Subscriber('/vehicle/traffic_lights', TrafficLightArray, self.traffic_cb)
-        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb)
+        sub6 = rospy.Subscriber('/image_color', Image, self.image_cb, queue_size = 1)
 
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
@@ -50,7 +50,7 @@ class TLDetector(object):
         self.last_wp = -1
         self.state_count = 0
 
-        rate = rospy.Rate(5) # 50Hz
+        rate = rospy.Rate(20) # 50Hz
         while not rospy.is_shutdown():
             if self.camera_image is not None:
                 self.process_image()
@@ -78,7 +78,6 @@ class TLDetector(object):
         
     def process_image(self):
         light_wp, state = self.process_traffic_lights()
-
         '''
         Publish upcoming red lights at camera frequency.
         Each predicted state has to occur `STATE_COUNT_THRESHOLD` number
@@ -159,6 +158,7 @@ class TLDetector(object):
 
         # List of positions that correspond to the line to stop in front of for a given intersection
         stop_line_positions = self.config['stop_line_positions']
+        
         if(self.pose and self.waypoints):
             car_position = self.get_closest_waypoint(self.pose.pose)
 
@@ -188,10 +188,9 @@ class TLDetector(object):
                         light_wp = stop_position
 
         if light:
-            
             state = self.get_light_state(light)
             return light_wp, state
-        self.waypoints = None
+        
         return -1, TrafficLight.UNKNOWN
 
 if __name__ == '__main__':
