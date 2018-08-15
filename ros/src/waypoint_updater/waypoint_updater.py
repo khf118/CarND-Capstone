@@ -131,7 +131,7 @@ class WaypointUpdater(object):
 
             if self.traffic_waypoint is None:
                 self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
-                self.stopping = False
+                # self.stopping = False
             else:
                 # Get index of stopline
                 stopline_waypoint_idx = self.traffic_waypoint
