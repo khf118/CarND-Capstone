@@ -11,4 +11,4 @@ stop_line_positions:
     - [161.76, 2303.82]
     - [351.84, 1574.65]
 is_site: False
-model_path: '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
+model_path: 'light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
