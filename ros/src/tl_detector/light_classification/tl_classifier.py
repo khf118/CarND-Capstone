@@ -6,12 +6,9 @@ import cv2
 class TLClassifier(object):
     def __init__(self,path):
 
-        # self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Mobilenet/Sim/frozen_inference_graph.pb'
         self.SSD_GRAPH_FILE = path
         self.confidence_cutoff = 0.6
 
-        #self.SSD_GRAPH_FILE = '/home/workspace/CarND-Capstone/ros/src/tl_detector/light_classification/SSD_Inception_v2/Sim/frozen_inference_graph.pb'
-        #self.confidence_cutoff = 0.7
 
         #load classifier
         self.detection_graph = self.load_graph(self.SSD_GRAPH_FILE)
@@ -41,33 +38,21 @@ class TLClassifier(object):
                 tf.import_graph_def(od_graph_def, name='')
         return graph
 
-    def filter_boxes(self,min_score, boxes, scores, classes):
-        """Return boxes with a confidence >= `min_score`"""
+    def get_strong_classifications(self, minimum_score, boxes, scores, classes):
+        """return list of identifications that have a score equal or
+        higher than min score (drop all others)"""
+        
         n = len(classes)
         idxs = []
         for i in range(n):
-            if scores[i] >= min_score:
+            if scores[i] >= minimum_score:
                 idxs.append(i)
 
-        filtered_boxes = boxes[idxs, ...]
-        filtered_scores = scores[idxs, ...]
-        filtered_classes = classes[idxs, ...]
-        return filtered_boxes, filtered_scores, filtered_classes
-
-    def to_image_coords(self,boxes, height, width):
-        """
-        The original box coordinate output is normalized, i.e [0, 1].
-
-        This converts it back to the original coordinate based on the image
-        size.
-        """
-        box_coords = np.zeros_like(boxes)
-        box_coords[:, 0] = boxes[:, 0] * height
-        box_coords[:, 1] = boxes[:, 1] * width
-        box_coords[:, 2] = boxes[:, 2] * height
-        box_coords[:, 3] = boxes[:, 3] * width
-
-        return box_coords
+        good_boxes = boxes[idxs, ...]
+        good_scores = scores[idxs, ...]
+        good_classes = classes[idxs, ...]
+        
+        return good_boxes, good_scores, good_classes
 
     def get_classification(self, image):
         """Determines the color of the traffic light in the image
@@ -89,28 +74,25 @@ class TLClassifier(object):
         image_np = np.expand_dims(np.asarray(image, dtype=np.uint8), 0)
 
         with tf.Session(graph=self.detection_graph) as sess:
-            # Actual detection.
+            # run detection using the neural network
             (boxes, scores, classes) = sess.run([self.detection_boxes, self.detection_scores, self.detection_classes],
                                                 feed_dict={self.image_tensor: image_np})
 
-            # Remove unnecessary dimensions
+            # trim unused dimensions
             boxes = np.squeeze(boxes)
             scores = np.squeeze(scores)
             classes = np.squeeze(classes)
 
-            # Filter boxes with a confidence score less than `confidence_cutoff`
-            boxes, scores, classes = self.filter_boxes(self.confidence_cutoff, boxes, scores, classes)
-
-            # The current box coordinates are normalized to a range between 0 and 1.
-            # This converts the coordinates actual location on the image.
-            #width, height = image.size
-            #box_coords = to_image_coords(boxes, height, width)
+            # trim out identified targets that have a classification probabilty less than confidence_cutoff
+            boxes, scores, classes = self.get_strong_classifications(self.confidence_cutoff, boxes, scores, classes)
 
             if boxes.size == 0:
                 return TrafficLight.UNKNOWN
 
             # todo: get best result based on either size of box, or highest probability
             # HERE NEED TO SORT CLASSES INTO BEST RESULT FIRST (BASED ON PROB OR BOX SIZE ETC.)
+
+            # by default the calssifier returns the highest probability detection first so we will take that as our detected light state
 
             if(classes[0] == 2):
                 return TrafficLight.RED
