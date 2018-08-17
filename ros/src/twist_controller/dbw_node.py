@@ -5,6 +5,7 @@ from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
 from geometry_msgs.msg import TwistStamped
 import math
+from styx_msgs.msg import Lane, Waypoint
 
 from twist_controller import Controller
 
@@ -71,8 +72,10 @@ class DBWNode(object):
         rospy.Subscriber('/vehicle/dbw_enabled', Bool, self.dbw_enabled_cb)
         rospy.Subscriber('twist_cmd', TwistStamped, self.twist_cb)
         rospy.Subscriber('/current_velocity', TwistStamped, self.velocity_cb)
+        rospy.Subscriber('/final_waypoints', Lane, self.wp_cb)
 
         self.current_vel = None
+        self.final_waypoints = None
         self.curr_ang_vel = None
         self.dbw_enabled = None
         self.linear_vel = None
@@ -85,11 +88,8 @@ class DBWNode(object):
         while not rospy.is_shutdown():
             # TODO: Get predicted throttle, brake, and steering using `twist_controller`
             # You should only publish the control commands if dbw is enabled
-            if not None in (self.current_vel, self.linear_vel, self.angular_vel):
-                self.throttle, self.brake, self.steering = self.controller.control(self.current_vel,
-                                                                                   self.dbw_enabled,
-                                                                                   self.linear_vel,
-                                                                                   self.angular_vel)
+            if not None in (self.current_vel, self.linear_vel, self.angular_vel,self.final_waypoints):
+                self.throttle, self.brake, self.steering = self.controller.control(self.final_waypoints,self.current_vel,self.dbw_enabled,self.linear_vel,self.angular_vel)
             if self.dbw_enabled:
                 self.publish(self.throttle, self.brake, self.steering)
             rate.sleep()
@@ -103,6 +103,9 @@ class DBWNode(object):
 
     def velocity_cb(self, msg):
         self.current_vel = msg.twist.linear.x
+
+    def wp_cb(self, msg):
+        self.final_waypoints = msg
 
     def publish(self, throttle, brake, steer):
         tcmd = ThrottleCmd()

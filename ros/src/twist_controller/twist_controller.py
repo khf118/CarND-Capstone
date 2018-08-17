@@ -1,6 +1,7 @@
 import rospy
 from yaw_controller import YawController
 from pid import PID
+from mpc import MPC
 from lowpass import LowPassFilter
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
@@ -15,7 +16,8 @@ class Controller(object):
         ki = 0.05
         kd = 0.02
         mn = 0. #minimum throttle value
-        mx = 0.30 #maximum throttle value
+        mx = 0.20 #maximum throttle value
+        self.mpc_controller = MPC(mx)
         self.throttle_controller = PID(kp, ki, kd, mn, mx)
 
         tau = 0.5 # 1/(2pi * tau) = cutoff frequency
@@ -32,14 +34,14 @@ class Controller(object):
         self.last_time = rospy.get_time()
         
 
-    def control(self, current_vel, dbw_enabled, linear_vel, angular_vel):
+    def control(self, lane, current_vel, dbw_enabled, linear_vel, angular_vel):
         if not dbw_enabled:
         	self.throttle_controller.reset()
         	return 0., 0., 0.
 
         current_vel = self.vel_lpf.filt(current_vel)
 
-        steering = self.yaw_controller.get_steering(linear_vel, angular_vel, current_vel)
+        steering1 = self.yaw_controller.get_steering(linear_vel, angular_vel, current_vel)
 
         vel_error = linear_vel - current_vel
         self.last_Vel = current_vel
@@ -48,17 +50,24 @@ class Controller(object):
         sample_time = current_time - self.last_time
         self.last_time = current_time
 
-        throttle = self.throttle_controller.step(vel_error, sample_time)
+        throttle1 = self.throttle_controller.step(vel_error, sample_time)
         brake = 0
 
         if linear_vel == 0 and current_vel < 0.1:
-        		throttle = 0
+        		throttle1 = 0
         		brake = 400
 
-    	elif throttle < .01 and vel_error < 0:
-    		throttle = 0
+    	elif throttle1 < .01 and vel_error < 0:
+    		throttle1 = 0
     		decel = max(vel_error, self.decel_limit)
     		brake = abs(decel) * self.vehicle_mass * self.wheel_radius
         
-    	return throttle, brake, steering
+        steering, throttle = self.mpc_controller.wp_cb(lane,current_vel)
+        brake = 0
+        if throttle < 0:
+            brake = 400 * throttle
+            throttle = 0
+        #print (throttle," ",steering)
+        #print(throttle1," ",steering1)
+    	return throttle, brake, -1 * steering
 
