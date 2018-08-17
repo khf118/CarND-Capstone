@@ -50,7 +50,7 @@ class TLDetector(object):
         self.last_wp = -1
         self.state_count = 0
 
-        rate = rospy.Rate(20) # 50Hz
+        rate = rospy.Rate(30) # 50Hz
         while not rospy.is_shutdown():
             if self.camera_image is not None:
                 self.process_image()

@@ -166,9 +166,9 @@ class WaypointUpdater(object):
                     for i in range(0, stopline_waypoint_idx - closest_waypoint):
 
                         if stopline_waypoint_idx - closest_waypoint - waypoint_margin > 0:
-                            vel_input = max(self.current_vel - (self.current_vel * (i+1) / (stopline_waypoint_idx - closest_waypoint - waypoint_margin)), 0)
+                            vel_input = max(self.current_vel - 2 * (self.current_vel * (i+1) / (stopline_waypoint_idx - closest_waypoint - waypoint_margin)), 0)
                         else:
-                            vel_input = 0
+                            vel_input = 0.0
 
                         self.stop_dict[closest_waypoint + i] = vel_input
                 #
@@ -186,7 +186,11 @@ class WaypointUpdater(object):
                     self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
 
                     if self.stopping == True:
-                        self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.stop_dict[closest_waypoint])
+                        for i in range(0, stopline_waypoint_idx - closest_waypoint):
+                            self.set_waypoint_velocity(self.waypoints, closest_waypoint + i, self.stop_dict[closest_waypoint + i])
+                        
+                        #print(self.waypoints[closest_waypoint].twist.twist.linear.x)
+                        
 
             # print('=======================================')
             # print('closest waypoint: ' + str(closest_waypoint))
