@@ -129,7 +129,7 @@ class WaypointUpdater(object):
             # Get closest waypoint idx
             closest_waypoint = self.get_closest_waypoint()
 
-            if self.traffic_waypoint is None:
+            if self.traffic_waypoint is None or int(str(self.traffic_waypoint).split()[1]) == -1:
                 self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
                 self.stopping = False
             else:
@@ -176,12 +176,6 @@ class WaypointUpdater(object):
                 # if req_a < DECEL_LIMIT:
                 #     self.stopping = False
 
-                if stopline_waypoint_idx == -1:
-                    # If green light
-                    Is_red_light = False
-                    self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
-                    self.stopping = False
-                else:
                     Is_red_light = True
                     self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
 

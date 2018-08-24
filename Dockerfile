@@ -9,8 +9,11 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys FF6D3CDA
 RUN apt-get update
 
 # setup rosdep
-RUN sh -c 'echo "yaml http://packages.dataspeedinc.com/ros/ros-public-'$ROS_DISTRO'.yaml '$ROS_DISTRO'" > /etc/ros/rosdep/sources.list.d/30-dataspeed-public-'$ROS_DISTRO'.list'
+#RUN sh -c 'echo "yaml http://packages.dataspeedinc.com/ros/ros-public-'$ROS_DISTRO'.yaml '$ROS_DISTRO'" > /etc/ros/rosdep/sources.list.d/30-dataspeed-public-'$ROS_DISTRO'.list'
+RUN rm -rf "/etc/ros/rosdep/sources.list.d"
+RUN rosdep init
 RUN rosdep update
+RUN sh -c 'echo "source /opt/ros/kinetic/setup.bash" >> ~/.bashrc'
 RUN apt-get install -y ros-$ROS_DISTRO-dbw-mkz
 RUN apt-get upgrade -y
 # end installing Dataspeed DBW
