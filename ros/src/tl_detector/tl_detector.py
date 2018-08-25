@@ -11,6 +11,8 @@ import tf
 import cv2
 import yaml
 import math
+import time
+import threading
 
 STATE_COUNT_THRESHOLD = 1
 
@@ -49,11 +51,16 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
-
-        rate = rospy.Rate(30) # 50Hz
+        self.process_thread = None
+        rate = rospy.Rate(15) # 50Hz
         while not rospy.is_shutdown():
             if self.camera_image is not None:
-                self.process_image()
+                #self.process_image()
+                #t = threading.Thread(target=self.process_image)
+                #t.start()
+                if (self.process_thread is None or not self.process_thread.isAlive()):
+                    self.process_thread = ImageProcess(self)
+                    self.process_thread.start()
             rate.sleep()
 
     def pose_cb(self, msg):
@@ -76,7 +83,12 @@ class TLDetector(object):
         self.has_image = True
         self.camera_image = msg
 
-    def process_image(self):
+class ImageProcess (threading.Thread):
+    def __init__(self, tl_detector):
+        threading.Thread.__init__(self)
+        self.tl_detector = tl_detector
+
+    def run(self):
         light_wp, state = self.process_traffic_lights()
         '''
         Publish upcoming red lights at camera frequency.
@@ -84,17 +96,17 @@ class TLDetector(object):
         of times till we start using it. Otherwise the previous stable state is
         used.
         '''
-        if self.state != state:
-            self.state_count = 0
-            self.state = state
-        elif self.state_count >= STATE_COUNT_THRESHOLD:
-            self.last_state = self.state
+        if self.tl_detector.state != state:
+            self.tl_detector.state_count = 0
+            self.tl_detector.state = state
+        elif self.tl_detector.state_count >= STATE_COUNT_THRESHOLD:
+            self.tl_detector.last_state = self.tl_detector.state
             light_wp = light_wp if state == TrafficLight.RED else -1
-            self.last_wp = light_wp
-            self.upcoming_red_light_pub.publish(Int32(light_wp))
+            self.tl_detector.last_wp = light_wp
+            self.tl_detector.upcoming_red_light_pub.publish(Int32(light_wp))
         else:
-            self.upcoming_red_light_pub.publish(Int32(self.last_wp))
-        self.state_count += 1
+            self.tl_detector.upcoming_red_light_pub.publish(Int32(self.tl_detector.last_wp))
+        self.tl_detector.state_count += 1
 
     def get_closest_waypoint(self, pose):
         """Identifies the closest path waypoint to the given position
@@ -109,10 +121,10 @@ class TLDetector(object):
         closest_idx = 0
         closest_dist = float('inf')
 
-        if self.waypoints:
-            for wp_idx in range(len(self.waypoints)):
-                distance = math.sqrt((pose.position.x-self.waypoints[wp_idx].pose.pose.position.x)**2 +
-                                    (pose.position.y-self.waypoints[wp_idx].pose.pose.position.y)**2)
+        if self.tl_detector.waypoints:
+            for wp_idx in range(len(self.tl_detector.waypoints)):
+                distance = math.sqrt((pose.position.x-self.tl_detector.waypoints[wp_idx].pose.pose.position.x)**2 +
+                                    (pose.position.y-self.tl_detector.waypoints[wp_idx].pose.pose.position.y)**2)
 
                 if(distance < closest_dist):
                     closest_dist = distance
@@ -130,17 +142,17 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        if(not self.has_image):
-            self.prev_light_loc = None
+        if(not self.tl_detector.has_image):
+            self.tl_detector.prev_light_loc = None
             return False
 
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        cv_image = self.tl_detector.bridge.imgmsg_to_cv2(self.tl_detector.camera_image, "bgr8")
 
         # note, do we want to have this line? check if network trained on RGB or BGR - i think BGR
         cv_image = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
 
         #Get classification
-        return self.light_classifier.get_classification(cv_image)
+        return self.tl_detector.light_classifier.get_classification(cv_image)
 
     def process_traffic_lights(self):
         """Finds closest visible traffic light, if one exists, and determines its
@@ -157,10 +169,10 @@ class TLDetector(object):
         min_dist = float('inf') #closest light
 
         # List of positions that correspond to the line to stop in front of for a given intersection
-        stop_line_positions = self.config['stop_line_positions']
+        stop_line_positions = self.tl_detector.config['stop_line_positions']
 
-        if(self.pose and self.waypoints):
-            car_position = self.get_closest_waypoint(self.pose.pose)
+        if(self.tl_detector.pose and self.tl_detector.waypoints):
+            car_position = self.get_closest_waypoint(self.tl_detector.pose.pose)
 
             # Find the closest visible traffic light (if one exists)
             for stop_pos in stop_line_positions:
@@ -178,8 +190,8 @@ class TLDetector(object):
 
                 stop_position = self.get_closest_waypoint(new_light.pose.pose)
 
-                distance_to_light = math.sqrt((self.waypoints[car_position].pose.pose.position.x-self.waypoints[stop_position].pose.pose.position.x)**2 +
-                                              (self.waypoints[car_position].pose.pose.position.y-self.waypoints[stop_position].pose.pose.position.y)**2)
+                distance_to_light = math.sqrt((self.tl_detector.waypoints[car_position].pose.pose.position.x-self.tl_detector.waypoints[stop_position].pose.pose.position.x)**2 +
+                                              (self.tl_detector.waypoints[car_position].pose.pose.position.y-self.tl_detector.waypoints[stop_position].pose.pose.position.y)**2)
 
                 if distance_to_light < min_dist and distance_to_light < max_detection_dist: # if closer than last light, but not beyond max range we are interested in,
                     if car_position < stop_position: # and our car has not yet passed the wp the light is at, then...

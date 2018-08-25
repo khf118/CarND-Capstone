@@ -4,21 +4,21 @@ from pid import PID
 from lowpass import LowPassFilter
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
-
+dead = False
 
 class Controller(object):
     def __init__(self, vehicle_mass, fuel_capacity, brake_deadband, decel_limit, accel_limit, wheel_radius, wheel_base, steer_ratio, max_lat_accel, max_steer_angle):
         
     	self.yaw_controller = YawController(wheel_base, steer_ratio, 0.4, max_lat_accel, max_steer_angle)
 
-        kp = 0.3
-        ki = 0.0
-        kd = 0.0
-        mn = -0.20 #minimum throttle value
-        mx = 0.20 #maximum throttle value
+        kp = 0.55
+        ki = 0.02
+        kd = 0.01
+        mn = 0 #minimum throttle value
+        mx = 0.15 #maximum throttle value
         self.throttle_controller = PID(kp, ki, kd, mn, mx)
 
-        tau = 0.5 # 1/(2pi * tau) = cutoff frequency
+        tau = 0.6 # 1/(2pi * tau) = cutoff frequency
         ts = .02 #sample time
         self.vel_lpf = LowPassFilter(tau, ts)
 
@@ -33,6 +33,7 @@ class Controller(object):
         
 
     def control(self, current_vel, dbw_enabled, linear_vel, angular_vel):
+        global dead
         if not dbw_enabled:
         	self.throttle_controller.reset()
         	return 0., 0., 0.
@@ -51,14 +52,18 @@ class Controller(object):
         throttle = self.throttle_controller.step(vel_error, sample_time)
         brake = 0
 
-        if linear_vel == 0 and current_vel < 0.1:
+        if linear_vel == 0:
         		throttle = 0
-        		brake = 400
+        		brake = 700
 
     	elif throttle < .01 and vel_error < 0:
     		throttle = 0
     		decel = max(vel_error, self.decel_limit)
     		brake = abs(decel) * self.vehicle_mass * self.wheel_radius
+        #print("linear_vel ",linear_vel)
+        #print("current_vel ",current_vel)
+        #print("throttle ",throttle)
+        #print("brake ",brake)
         
     	return throttle, brake, steering
 

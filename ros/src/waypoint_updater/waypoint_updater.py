@@ -24,7 +24,7 @@ as well as to verify your TL classifier.
 TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
-LOOKAHEAD_WPS = 50 # Number of waypoints we will publish. You can change this number
+LOOKAHEAD_WPS = 40 # Number of waypoints we will publish. You can change this number
 DECEL_LIMIT = -1
 DIST_MARGIN = 3
 
@@ -62,6 +62,8 @@ class WaypointUpdater(object):
         self.stopping = False
         self.stop_dict = {}
 
+        self.starting = True
+        self.starting_idx = None
         rate = rospy.Rate(50)
         while not rospy.is_shutdown():
             self.count += 1
@@ -156,7 +158,7 @@ class WaypointUpdater(object):
                     stop_distance = -(0.5 * req_a) * (stop_time ** 2) + (self.current_vel * stop_time)
 
                 # Scheduling the target velocity from stop signal on position to stopline
-                if req_a < -0.7 and stop_distance != 0 and stop_distance > dist_next_stopline and self.stopping == False:
+                if req_a < -0.7 and stop_distance != 0 and stop_distance > dist_next_stopline and self.stopping == False and (stopline_waypoint_idx - closest_waypoint < 8):
                     self.stopping = True
 
                     waypoint_margin = 1
@@ -179,16 +181,37 @@ class WaypointUpdater(object):
                 if stopline_waypoint_idx == -1:
                     # If green light
                     Is_red_light = False
-                    self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
+                    if self.starting:
+                        start_vel = self.vel_base / 4
+                        for i in range(0,4):
+                            self.set_waypoint_velocity(self.waypoints, closest_waypoint + i, start_vel + i * (self.vel_base / 4))
+                        if self.starting_idx is None:
+                            self.starting_idx = closest_waypoint + 4
+                        if closest_waypoint >= self.starting_idx:
+                            self.starting = False
+                            self.starting_idx = closest_waypoint + 4
+                    else:
+                        self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
                     self.stopping = False
                 else:
                     Is_red_light = True
-                    self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
-
                     if self.stopping == True:
                         for i in range(0, stopline_waypoint_idx - closest_waypoint):
                             self.set_waypoint_velocity(self.waypoints, closest_waypoint + i, self.stop_dict[closest_waypoint + i])
-                        
+                        self.starting = True
+                    else:
+                        if self.starting:
+                            start_vel = self.vel_base / 4
+                            for i in range(0,4):
+                                self.set_waypoint_velocity(self.waypoints, closest_waypoint + i, start_vel + i * (self.vel_base / 4))
+                            if self.starting_idx is None:
+                                self.starting_idx = closest_waypoint + 4
+                            if closest_waypoint >= self.starting_idx:
+                                self.starting = False
+                                self.starting_idx = closest_waypoint + 4
+                        else:
+                            self.set_waypoint_velocity(self.waypoints, closest_waypoint, self.vel_base)
+                        self.stopping = False
                         #print(self.waypoints[closest_waypoint].twist.twist.linear.x)
                         
 
