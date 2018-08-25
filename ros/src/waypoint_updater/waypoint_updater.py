@@ -158,10 +158,10 @@ class WaypointUpdater(object):
                     stop_distance = -(0.5 * req_a) * (stop_time ** 2) + (self.current_vel * stop_time)
 
                 # Scheduling the target velocity from stop signal on position to stopline
-                if req_a < -0.7 and stop_distance != 0 and stop_distance > dist_next_stopline and self.stopping == False and (stopline_waypoint_idx - closest_waypoint < 8):
+                if req_a < -0.7 and stop_distance != 0 and stop_distance > dist_next_stopline and self.stopping == False and (stopline_waypoint_idx - closest_waypoint < 15):
                     self.stopping = True
 
-                    waypoint_margin = 1
+                    waypoint_margin = 3
                     self.stop_dict = {}
 
                     # Get waypoint index to stopline and assign velocity to each waypoint
